@@ -238,6 +238,7 @@ def create_sheet():
 
 @app.route('/add_business', methods=['POST'])
 def add_business():
+   print("waleed")
    if 'credentials' not in session:
     return redirect('authorize')
   # Load credentials from the session.
