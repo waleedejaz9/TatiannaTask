@@ -312,6 +312,7 @@ def add_business():
     ).execute()
   # Process the argument value as needed
    request_body = {"values": extracted_data}
+   print(request_body)
    responsevalues = service.spreadsheets().values().append(
     spreadsheetId=spreadsheet_id,
     range=request.form['sheet_name']+'!A2',  # Adjust sheet name and range as needed
