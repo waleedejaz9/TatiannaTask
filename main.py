@@ -141,25 +141,25 @@ def authorize():
 @app.route('/oauth2callback')
 def oauth2callback():
   print("i am waleed.")
-  # # Specify the state when creating the flow in the callback so that it can
-  # # verified in the authorization server response.
-  # state = session['state']
+  # Specify the state when creating the flow in the callback so that it can
+  # verified in the authorization server response.
+  state = session['state']
 
-  # flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-  #     CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
-  # flow.redirect_uri = url_for('oauth2callback', _external=True)
+  flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
+      CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
+  flow.redirect_uri = url_for('oauth2callback', _external=True)
 
-  # # Use the authorization server's response to fetch the OAuth 2.0 tokens.
-  # authorization_response = request.url
-  # flow.fetch_token(authorization_response=authorization_response)
+  # Use the authorization server's response to fetch the OAuth 2.0 tokens.
+  authorization_response = request.url
+  flow.fetch_token(authorization_response=authorization_response)
 
-  # # Store credentials in the session.
-  # # ACTION ITEM: In a production app, you likely want to save these
-  # #              credentials in a persistent database instead.
-  # credentials = flow.credentials
-  # session['credentials'] = credentials_to_dict(credentials)
+  # Store credentials in the session.
+  # ACTION ITEM: In a production app, you likely want to save these
+  #              credentials in a persistent database instead.
+  credentials = flow.credentials
+  session['credentials'] = credentials_to_dict(credentials)
 
-  # return redirect('/') 
+  return redirect('/') 
 
 
 @app.route('/revoke')
