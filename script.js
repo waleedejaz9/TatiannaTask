@@ -6,7 +6,7 @@ const path = require('path');
 const bodyParser = require('body-parser');
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 8080;
 
 // Setup for parsing application/json and urlencoded request bodies
 app.use(bodyParser.json());
