@@ -78,7 +78,6 @@ app.get('/oauth2callback', async (req, res) => {
 // Additional routes for your application...
 // Route to add business
 app.post('/add_business', async (req, res) => {
-  console.log("waleed");
 
   if (!req.session || !req.session.credentials) {
       return res.redirect('authorize');
