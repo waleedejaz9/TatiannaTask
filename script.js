@@ -1,4 +1,3 @@
-require('dotenv').config();
 const express = require('express');
 const { google } = require('googleapis');
 const fs = require('fs');
@@ -6,7 +5,7 @@ const path = require('path');
 const bodyParser = require('body-parser');
 
 const app = express();
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 5000;
 
 // Setup for parsing application/json and urlencoded request bodies
 app.use(bodyParser.json());
@@ -79,70 +78,138 @@ app.get('/oauth2callback', async (req, res) => {
 // Additional routes for your application...
 // Route to add business
 app.post('/add_business', async (req, res) => {
-  if (!oAuth2Client) {
-      return res.redirect('/authorize');
+  console.log("waleed");
+
+  if (!req.session || !req.session.credentials) {
+      return res.redirect('authorize');
   }
 
-  const sheetName = req.body.sheet_name;
-  const query = req.body.query;
-  const url = `https://places.googleapis.com/v1/places:searchText?query=${encodeURIComponent(query)}&key=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`;
-  console.log(url)
-  try {
-      // Fetch data from Google Places API
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (!data || !data.places) {
-          throw new Error('Failed to retrieve data from Google Places API');
-      }
+  // Initialize Google Sheets API
+  const auth = new google.auth.GoogleAuth({
+      credentials: req.session.credentials,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets']
+  });
 
-      const extractedData = data.places.map(item => ([
-          item.displayName.text,
-          item.nationalPhoneNumber || '',
-          '', // Placeholder for Email
-          '', // Placeholder for Notes
-          item.formattedAddress || '',
-          item.websiteUri || ''
-      ]));
+  const sheets = google.sheets({version: 'v4', auth});
 
-      const sheets = google.sheets({ version: 'v4', auth: oAuth2Client });
+  const spreadsheetId = 'Y_h7XcUvm9scOJPNhdZ3eaLvrt6aciYt6sCZkGLj6EQ';
+  const sheetName = req.body.sheet_name; // Ensure you have body-parser setup to parse request.body
 
-      // Add a new sheet
-      await sheets.spreadsheets.batchUpdate({
-          spreadsheetId,
-          requestBody: {
-              requests: [{
-                  addSheet: {
-                      properties: {
-                          title: sheetName
-                      }
+  const request_body = {
+      requests: [
+          {
+              addSheet: {
+                  properties: {
+                      title: sheetName
                   }
-              }]
+              }
           }
-      });
+      ]
+  };
 
-      // Prepare headers
-      const headers = ["Name", "Phone Number", "Email", "Notes", "Address", "Website"];
-      // Append the headers
-      await sheets.spreadsheets.values.append({
+  try {
+      const response = await sheets.spreadsheets.batchUpdate({
           spreadsheetId,
-          range: `${sheetName}!A1`,
-          valueInputOption: 'USER_ENTERED',
-          requestBody: { values: [headers] }
+          resource: request_body,
       });
+      console.log('Batch update successful!');
+  } catch (err) {
+      console.log('An unexpected error occurred: %s', err);
+      return res.json(`A sheet with the name ${sheetName} already exists`);
+  }
 
-      // Append the extracted data
-      await sheets.spreadsheets.values.append({
-          spreadsheetId,
-          range: `${sheetName}!A2`,
-          valueInputOption: 'USER_ENTERED',
-          requestBody: { values: extractedData }
-      });
+  // Fetching data from an external API
+  const url = 'https://places.googleapis.com/v1/places:searchText';
+  const headers = {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': "AIzaSyAMHLXy_sP6O2Tc10eySjedDFdYWQDyuCI", // Store your API key in .env file
+  };
 
-      res.send(`${sheetName} updated successfully!`);
+  const data = {
+      "textQuery": req.body.query,
+      "rankPreference": "RELEVANCE"
+  };
+
+  try {
+      const response = await axios.post(url, data, {headers});
+      if (response.status_code === 200) {
+          const results = response.data.places;
+          const extracted_data = results.map(item => [
+              item.displayName.text,
+              item.nationalPhoneNumber,
+              "",
+              "",
+              item.formattedAddress,
+              item.websiteUri || ""
+          ]);
+
+          // Append headers
+          const table_headers = ["Name", "Phone Number", "Email", "Notes", "Info", "Address", "Website"];
+          await sheets.spreadsheets.values.append({
+              spreadsheetId,
+              range: `${sheetName}!A1`,
+              valueInputOption: 'USER_ENTERED',
+              resource: {values: [table_headers]},
+          });
+
+          // Append data
+          await sheets.spreadsheets.values.append({
+              spreadsheetId,
+              range: `${sheetName}!A2`,
+              valueInputOption: 'USER_ENTERED',
+              resource: {values: extracted_data},
+          });
+
+          console.log("Data appended successfully");
+          req.session.credentials = auth.credentials; // Update session credentials
+          res.send(`${sheetName} updated!`);
+      } else {
+          throw new Error('Failed to fetch places data');
+      }
   } catch (error) {
-      console.error('An error occurred:', error);
-      res.status(500).send('An error occurred while processing your request.');
+      console.error('Error fetching places data:', error);
+      res.status(500).send('Error fetching places data');
+  }
+});
+
+app.post('/create_sheet', async (req, res) => {
+  if (!req.session || !req.session.credentials) {
+      return res.redirect('authorize');
+  }
+
+  // Initialize Google Sheets API
+  const auth = new google.auth.GoogleAuth({
+      credentials: req.session.credentials,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets']
+  });
+
+  const sheets = google.sheets({version: 'v4', auth});
+
+  const spreadsheetId = '1MmGXm6QSLwK-YP6bEVKWKRDexq4ofUXc-cQXS4vLNXQ';
+  const sheetName = req.body.sheet_name; // Ensure you have body-parser setup to parse request.body
+
+  const request_body = {
+      requests: [
+          {
+              addSheet: {
+                  properties: {
+                      title: sheetName
+                  }
+              }
+          }
+      ]
+  };
+
+  try {
+      const response = await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          resource: request_body,
+      });
+      console.log('Batch update successful!');
+      res.send("Argument processed successfully!");
+  } catch (err) {
+      console.log('An unexpected error occurred: %s', err);
+      res.status(500).json(`A sheet with the name ${sheetName} already exists`);
   }
 });
 
